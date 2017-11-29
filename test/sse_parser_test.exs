@@ -41,6 +41,18 @@ defmodule MarathonEventExporter.SSEParserTest do
     assert get_state(ssep) == %State{listeners: MapSet.new()}
   end
 
+  test "empty events are not sent", %{ssep: ssep} do
+    {:ok, listener} = start_supervised(EventCatcher)
+    assert SSEParser.register_listener(ssep, listener) == :ok
+    assert EventCatcher.events(listener) == []
+    assert SSEParser.feed_data(ssep, "\n\n") == :ok
+    assert get_state(ssep).event == %Event{}
+    assert EventCatcher.events(listener) == []
+    assert SSEParser.feed_data(ssep, "data: hello\n\n") == :ok
+    assert get_state(ssep).event == %Event{}
+    assert EventCatcher.events(listener) == [%Event{data: "hello"}]
+  end
+
   test "a listener receives events", %{ssep: ssep} do
     {:ok, listener} = start_supervised(EventCatcher)
     assert SSEParser.register_listener(ssep, listener) == :ok
@@ -61,11 +73,54 @@ defmodule MarathonEventExporter.SSEParserTest do
     assert EventCatcher.events(l2) == [%Event{data: "sanibonani"}]
   end
 
-  test "feed_data", %{ssep: ssep} do
-    assert SSEParser.feed_data(ssep, "hello") == :ok
+  test "partial lines are buffered", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "data: hello") == :ok
+    assert get_state(ssep) == %State{event: %Event{}, line_part: "data: hello"}
     assert SSEParser.feed_data(ssep, " ") == :ok
-    assert SSEParser.feed_data(ssep, "world") == :ok
-    assert get_state(ssep) == %State{event: %Event{}, line_part: "hello world"}
+    assert SSEParser.feed_data(ssep, "world\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{data: "hello world\n"}}
+  end
+
+  test "comments are ignored", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, ":hello") == :ok
+    assert get_state(ssep) == %State{event: %Event{}, line_part: ":hello"}
+    assert SSEParser.feed_data(ssep, "\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{}, line_part: ""}
+  end
+
+  test "unknown fields are ignored", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "hello:") == :ok
+    assert get_state(ssep) == %State{event: %Event{}, line_part: "hello:"}
+    assert SSEParser.feed_data(ssep, " world\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{}, line_part: ""}
+  end
+
+  test "data field is appended to", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "data: line 1\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{data: "line 1\n"}}
+    assert SSEParser.feed_data(ssep, "data: line 2\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{data: "line 1\nline 2\n"}}
+  end
+
+  test "event field is replaced", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "event: sad\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{event: "sad"}}
+    assert SSEParser.feed_data(ssep, "event: happy\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{event: "happy"}}
+  end
+
+  test "id field is replaced", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "id: 1\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{id: "1"}}
+    assert SSEParser.feed_data(ssep, "id: 2\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{id: "2"}}
+  end
+
+  test "id field containing NUL is ignored", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "id: 1\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{id: "1"}}
+    assert SSEParser.feed_data(ssep, "id: 2\x00\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{id: "1"}}
   end
 
 end

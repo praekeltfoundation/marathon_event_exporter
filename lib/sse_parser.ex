@@ -139,7 +139,7 @@ defmodule MarathonEventExporter.SSEParser do
   # Set the id field to the id value if the value does not contain a NUL.
   defp process_field("id", value, state) do
     cond do
-      String.contains?(value, <<0>>) -> state.event
+      String.contains?(value, <<0>>) -> state
       true ->
         new_event = %{state.event | id: value}
         %{state | event: new_event}
