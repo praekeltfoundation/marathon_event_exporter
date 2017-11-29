@@ -1,0 +1,10 @@
+# Try get codecov to stop complaining about the lack of coverage in the base
+# branch.
+coverage:
+  status:
+    project:
+      default:
+        if_not_found: success
+    patch:
+      default:
+        if_not_found: success
