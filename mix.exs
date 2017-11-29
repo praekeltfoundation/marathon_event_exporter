@@ -9,7 +9,11 @@ defmodule MarathonEventExporter.Mixfile do
       start_permanent: Mix.env == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test],
+      preferred_cli_env: [
+        "coveralls": :test,
+        "coveralls.json": :test,
+        "coveralls.detail": :test,
+      ],
     ]
   end
 
