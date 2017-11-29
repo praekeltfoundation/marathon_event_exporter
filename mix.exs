@@ -7,7 +7,9 @@ defmodule MarathonEventExporter.Mixfile do
       version: "0.1.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env == :prod,
-      deps: deps()
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test],
     ]
   end
 
@@ -22,6 +24,7 @@ defmodule MarathonEventExporter.Mixfile do
   defp deps do
     [
       {:httpoison, "~> 0.13"},
+      {:excoveralls, "~> 0.7", only: :test},
     ]
   end
 end
