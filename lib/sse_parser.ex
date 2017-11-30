@@ -13,6 +13,12 @@ defmodule MarathonEventExporter.SSEParser do
     defstruct data: "", event: "", id: ""
   end
 
+  defimpl String.Chars, for: Event do
+    def to_string(event) do
+      "#Event<#{event.event} #{inspect event.data} id=#{inspect event.id}>"
+    end
+  end
+
   defmodule State do
     defstruct listeners: MapSet.new(), event: %Event{}, line_part: ""
   end
