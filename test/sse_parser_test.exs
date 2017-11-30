@@ -123,4 +123,9 @@ defmodule MarathonEventExporter.SSEParserTest do
     assert get_state(ssep) == %State{event: %Event{id: "1"}}
   end
 
+  test "field value containing colon is properly handled", %{ssep: ssep} do
+    assert SSEParser.feed_data(ssep, "data: 16:9\n") == :ok
+    assert get_state(ssep) == %State{event: %Event{data: "16:9\n"}}
+  end
+
 end

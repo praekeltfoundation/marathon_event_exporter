@@ -92,7 +92,7 @@ defmodule MarathonEventExporter.SSEParser do
   defp data_received("\r\n" <> data, state), do: line_complete(data, state)
   defp data_received("\r" <> data, state), do: line_complete(data, state)
   defp data_received("\n" <> data, state), do: line_complete(data, state)
-  # This clause handles anything not matche above, which is all non-newlines
+  # This clause handles anything not matched above, which is all non-newlines
   # characters.
   defp data_received(<<char, data :: binary>>, state) do
     %State{line_part: line} = state
@@ -118,7 +118,7 @@ defmodule MarathonEventExporter.SSEParser do
   defp line_received(":" <> _, state), do: state
   # Parse the line into the field and value for further processing.
   defp line_received(line, state) do
-    {field, value} = case String.split(line, ":") do
+    {field, value} = case String.split(line, ":", parts: 2) do
                        [field] -> {field, ""}
                        [field, " " <> value] -> {field, value}
                        [field, value] -> {field, value}
