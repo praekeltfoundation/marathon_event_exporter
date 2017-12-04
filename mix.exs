@@ -28,6 +28,7 @@ defmodule MarathonEventExporter.Mixfile do
   defp deps do
     [
       {:httpoison, "~> 0.13"},
+      {:cowboy, "~> 2.1"},
       {:excoveralls, "~> 0.7", only: :test},
     ]
   end
