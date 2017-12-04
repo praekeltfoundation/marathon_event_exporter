@@ -37,7 +37,7 @@ defmodule MarathonEventExporter.SSEParser do
   Feeds some input data into the parser.
   """
   def feed_data(server, data) do
-    GenServer.cast(server, {:feed_data, data})
+    GenServer.call(server, {:feed_data, data})
   end
 
   @doc """
@@ -61,9 +61,9 @@ defmodule MarathonEventExporter.SSEParser do
     {:ok, %State{}}
   end
 
-  def handle_cast({:feed_data, data}, state) do
+  def handle_call({:feed_data, data}, _from, state) do
     new_state = data_received(data, state)
-    {:noreply, new_state}
+    {:reply, :ok, new_state}
   end
 
   def handle_call({:register_listener, pid}, _from, state) do
