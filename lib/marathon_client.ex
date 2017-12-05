@@ -11,7 +11,8 @@ defmodule MarathonEventExporter.MarathonClient do
 
   defmodule StreamCatcher do
     @moduledoc """
-    A GenServer to receive and forward async responses.
+    A GenServer to receive async responses from the HTTP client and forward the
+    data chunks to the SSE parser.
     """
 
     use GenServer
