@@ -82,7 +82,7 @@ defmodule FakeMarathon do
   end
 
   def handle_call({:event, _, _}=event, _from, state) do
-    Enum.each(state.sse_streams, fn s -> Process.send(s, event, []) end)
+    Enum.each(state.sse_streams, fn s -> send(s, event) end)
     {:reply, :ok, state}
   end
 end
