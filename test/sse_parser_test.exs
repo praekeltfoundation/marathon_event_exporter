@@ -4,16 +4,6 @@ defmodule MarathonEventExporter.SSEParserTest do
   alias MarathonEventExporter.SSEParser
   alias SSEParser.{Event, State}
 
-  defmodule EventCatcher do
-    use GenServer
-
-    def start_link(opts), do: GenServer.start_link(__MODULE__, [], opts)
-    def events(server), do: GenServer.call(server, :events)
-
-    def handle_call(:events, _from, events), do: {:reply, events, events}
-    def handle_info({:sse, event}, events), do: {:noreply, [event | events]}
-  end
-
   setup do
     {:ok, ssep} = start_supervised(SSEParser)
     %{ssep: ssep}
@@ -79,7 +69,6 @@ defmodule MarathonEventExporter.SSEParserTest do
     assert SSEParser.register_listener(ssep, l1) == :ok
     assert SSEParser.register_listener(ssep, l2) == :ok
     assert SSEParser.feed_data(ssep, "data: sanibonani\n\n") == :ok
-    assert get_state(ssep).event == %Event{}
     assert EventCatcher.events(l1) == [%Event{data: "sanibonani"}]
     assert EventCatcher.events(l2) == [%Event{data: "sanibonani"}]
   end
