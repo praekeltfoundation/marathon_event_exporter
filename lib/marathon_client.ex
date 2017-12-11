@@ -39,9 +39,14 @@ defmodule MarathonEventExporter.MarathonClient do
       {:ok, {r, ssep}}
     end
 
-    def handle_info(%HTTPoison.AsyncChunk{chunk: chunk}, {_, ssep}=state) do
+    def handle_info(msg=%HTTPoison.AsyncChunk{chunk: chunk}, {_, ssep}=state) do
+      Logger.debug("msg: #{inspect msg}")
       SSEParser.feed_data(ssep, chunk)
       {:noreply, state}
+    end
+
+    def handle_info(%HTTPoison.AsyncEnd{}, state) do
+      {:stop, :normal, state}
     end
 
     def handle_info(msg, state) do
