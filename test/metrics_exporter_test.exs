@@ -3,6 +3,7 @@ defmodule MarathonEventExporter.MetricsExporterTest do
 
   alias MarathonEventExporter.MetricsExporter
   alias MetricsExporter.MetricsAgent
+  import TestHelpers
 
   setup do
     {:ok, metrics_agent} = start_supervised(MetricsAgent)
@@ -28,8 +29,8 @@ defmodule MarathonEventExporter.MetricsExporterTest do
       "# TYPE marathon_events_total counter",
       ""], "\n")
 
-    ma = MetricsExporter.metrics_agent(me)
-    MetricsAgent.increment_event(ma, "event_stream_attached")
+    event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
+    send(me, {:sse, event})
 
     {:ok, response2} = HTTPoison.get(metrics_url)
     assert response2.status_code == 200

@@ -11,6 +11,7 @@ defmodule MarathonEventExporter.MetricsExporter do
     occurred.
     """
     use Agent
+    alias MarathonEventExporter.SSEParser.Event
 
     def start_link(_) do
       Agent.start_link(fn -> %{} end, name: __MODULE__)
@@ -19,7 +20,7 @@ defmodule MarathonEventExporter.MetricsExporter do
     @doc """
     Increment the count of the number of times an event type has occurred.
     """
-    def increment_event(ma, event) do
+    def increment_event(ma, %Event{event: event}) do
       Agent.update(ma, fn state -> Map.update(state, event, 1, &(&1 + 1)) end)
     end
 
@@ -69,9 +70,6 @@ defmodule MarathonEventExporter.MetricsExporter do
   @doc "Get the port this server is listening on."
   def port(es), do: GenServer.call(es, :port)
 
-  @doc "Get the pid for the MetricsAgent this server uses."
-  def metrics_agent(es), do: GenServer.call(es, :metrics_agent)
-
   def init({port, metrics_agent}) do
     handlers = [
       {"/metrics", MetricsHandler, %{metrics_agent: metrics_agent}},
@@ -87,7 +85,9 @@ defmodule MarathonEventExporter.MetricsExporter do
   end
 
   def handle_call(:port, _from, state), do: {:reply, state.port, state}
-  def handle_call(:metrics_agent, _from, state) do
-    {:reply, state.metrics_agent, state}
+
+  def handle_info({:sse, event}, state) do
+    MetricsAgent.increment_event(state.metrics_agent, event)
+    {:noreply, state}
   end
 end
