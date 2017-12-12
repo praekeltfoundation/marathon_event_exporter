@@ -9,7 +9,7 @@ defmodule MarathonEventExporter.MetricsExporterTest do
     {:ok, metrics_agent} = start_supervised(MetricsAgent)
     {:ok, metrics_exporter} = start_supervised(
       {MetricsExporter, {0, metrics_agent}})
-    %{me: metrics_exporter, ma: metrics_agent}
+    %{me: metrics_exporter}
   end
 
   def get_header(response, header_name),
@@ -44,13 +44,21 @@ defmodule MarathonEventExporter.MetricsExporterTest do
       ""], "\n")
   end
 
-  test "metrics are incremented when the same event is received", %{ma: ma} do
-    event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
+  test "multiple metrics returned when multiple events received", %{me: me} do
+    event1 = marathon_event("event_stream_attached", remoteAddress: "10.0.0.1")
+    event2 = marathon_event("event_stream_detached", remoteAddress: "10.0.0.1")
+    event3 = marathon_event("event_stream_attached", remoteAddress: "10.0.0.1")
 
-    MetricsAgent.increment_event(ma, event)
-    MetricsAgent.increment_event(ma, event)
+    send(me, {:sse, event1})
+    send(me, {:sse, event2})
+    send(me, {:sse, event3})
 
-    metrics = MetricsAgent.get_events(ma)
-    assert metrics == %{"event_stream_attached" => 2}
+    metrics_url = make_metrics_url(me)
+    {:ok, response} = HTTPoison.get(metrics_url)
+    assert response.status_code == 200
+    assert response.body =~
+      ~s'marathon_events_total{event="event_stream_attached"} 2'
+    assert response.body =~
+      ~s'marathon_events_total{event="event_stream_detached"} 1'
   end
 end
