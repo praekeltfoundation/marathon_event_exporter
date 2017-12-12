@@ -1,21 +1,8 @@
 defmodule MarathonEventExporter.MarathonClientTest do
   use ExUnit.Case, async: true
 
-  alias MarathonEventExporter.{MarathonClient, SSEParser}
-
-  @doc """
-  Build a Marathon event from the given type and fields.
-
-  The :eventType field is always added/overridden, the :timestamp field is
-  added if one is not provided.
-  """
-  def marathon_event(event_type, fields) do
-    {:ok, data} = Map.new(fields)
-    |> Map.put_new(:timestamp, DateTime.utc_now |> DateTime.to_iso8601)
-    |> Map.put(:eventType, event_type)
-    |> JSX.encode
-    %SSEParser.Event{event: event_type, data: data}
-  end
+  alias MarathonEventExporter.MarathonClient
+  import TestHelpers
 
   test "stream_events streams events to a listener process" do
     {:ok, fm} = start_supervised(FakeMarathon)
