@@ -63,14 +63,15 @@ defmodule MarathonEventExporter.MetricsExporter do
   end
 
   def start_link({port, metrics_agent}) do
-    GenServer.start_link(
-      __MODULE__, {port, metrics_agent}, name: :exporter_server)
+    GenServer.start_link(__MODULE__, {port, metrics_agent})
   end
 
   @doc "Get the port this server is listening on."
   def port(es), do: GenServer.call(es, :port)
 
   def init({port, metrics_agent}) do
+    # Trap exits so terminate/2 gets called reliably.
+    Process.flag(:trap_exit, true)
     handlers = [
       {"/metrics", MetricsHandler, %{metrics_agent: metrics_agent}},
     ]
@@ -82,6 +83,11 @@ defmodule MarathonEventExporter.MetricsExporter do
       port: :ranch.get_port(:exporter_listener),
       metrics_agent: metrics_agent
     }}
+  end
+
+  def terminate(reason, _state) do
+    :cowboy.stop_listener(:exporter_listener)
+    reason
   end
 
   def handle_call(:port, _from, state), do: {:reply, state.port, state}

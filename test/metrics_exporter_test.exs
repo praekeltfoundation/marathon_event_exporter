@@ -18,7 +18,7 @@ defmodule MarathonEventExporter.MetricsExporterTest do
   def make_metrics_url(me),
     do: "http://localhost:#{MetricsExporter.port(me)}/metrics"
 
-  test "metrics endpoint returns Prometheus metrics", %{me: me} do
+  test "returns only the metric metadata when no events received", %{me: me} do
     metrics_url = make_metrics_url(me)
     {:ok, response} = HTTPoison.get(metrics_url)
 
@@ -28,13 +28,16 @@ defmodule MarathonEventExporter.MetricsExporterTest do
       "# HELP marathon_events_total The total number of Marathon events.",
       "# TYPE marathon_events_total counter",
       ""], "\n")
+  end
 
+  test "a metric is returned when an event is received", %{me: me} do
     event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
     send(me, {:sse, event})
 
-    {:ok, response2} = HTTPoison.get(metrics_url)
-    assert response2.status_code == 200
-    assert response2.body == Enum.join([
+    metrics_url = make_metrics_url(me)
+    {:ok, response} = HTTPoison.get(metrics_url)
+    assert response.status_code == 200
+    assert response.body == Enum.join([
       "# HELP marathon_events_total The total number of Marathon events.",
       "# TYPE marathon_events_total counter",
       ~s'marathon_events_total{event="event_stream_attached"} 1',
