@@ -44,6 +44,12 @@ defmodule FakeMarathon do
     def info(:close, req, state) do
       {:stop, req, state}
     end
+
+    ## Client API
+
+    def keepalive(handler), do: send(handler, :keepalive)
+    def event(handler, {:event, _, _}=event), do: send(handler, event)
+    def close(handler), do: send(handler, :close)
   end
 
   defmodule State do
@@ -92,12 +98,12 @@ defmodule FakeMarathon do
 
   def handle_call({:event, _, _}=event, _from, state) do
     Logger.debug("FakeMarathon.event: #{inspect event}")
-    Enum.each(state.sse_streams, fn s -> send(s, event) end)
+    Enum.each(state.sse_streams, &SSEHandler.event(&1, event))
     {:reply, :ok, state}
   end
 
   def handle_call(:end_stream, _from, state) do
-    Enum.each(state.sse_streams, fn s -> send(s, :close) end)
+    Enum.each(state.sse_streams, &SSEHandler.close/1)
     {:reply, :ok, state}
   end
 end
