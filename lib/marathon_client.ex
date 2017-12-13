@@ -24,24 +24,25 @@ defmodule MarathonEventExporter.MarathonClient do
     @doc """
     Starts a new StreamCatcher.
     """
-    def start_link({url, listeners}, opts \\ []) do
-      GenServer.start_link(__MODULE__, {url, listeners}, opts)
+    def start_link({url, listeners, timeout}, opts \\ []) do
+      GenServer.start_link(__MODULE__, {url, listeners, timeout}, opts)
     end
 
     ## Server callbacks
 
-    def init({url, listeners}) do
+    def init({url, listeners, timeout}) do
       headers = %{"Accept" => "text/event-stream"}
       {:ok, ssep} = SSEParser.start_link([])
       Enum.each(listeners, fn l -> SSEParser.register_listener(ssep, l) end)
-      r = HTTPoison.get!(url, headers, stream_to: self(), recv_timeout: 60_000)
+      r = HTTPoison.get!(
+        url, headers, stream_to: self(), recv_timeout: timeout)
       # It's safe to receive in here, because the main GenServer receive loop
       # has not yet started.
       receive do
         %HTTPoison.AsyncStatus{code: 200} ->
           {:ok, {r, ssep}}
         msg ->
-          Logger.debug("Failed to : #{inspect msg}")
+          Logger.debug("Failed to connect to stream: #{inspect msg}")
           {:stop, "Error connecting to event stream: #{inspect msg}"}
       end
     end
@@ -51,17 +52,27 @@ defmodule MarathonEventExporter.MarathonClient do
       {:noreply, state}
     end
 
+    def handle_info(%HTTPoison.AsyncHeaders{}, state) do
+      # Ignore the headers. There's nothing we care about in them.
+      {:noreply, state}
+    end
+
     def handle_info(%HTTPoison.AsyncEnd{}, state) do
       {:stop, :normal, state}
     end
 
+    def handle_info(%HTTPoison.Error{reason: reason}, state) do
+      {:stop, reason, state}
+    end
+
     def handle_info(msg, state) do
-      Logger.debug("msg: #{inspect msg}")
+      Logger.debug("Unexpected message: #{inspect msg}")
       {:noreply, state}
     end
   end
 
-  def stream_events(base_url, listeners) do
-    StreamCatcher.start_link({base_url <> "/v2/events", listeners})
+  def stream_events(base_url, listeners, timeout \\ 60_000) do
+    StreamCatcher.start_link(
+      {base_url <> "/v2/events", listeners, timeout})
   end
 end

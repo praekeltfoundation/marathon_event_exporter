@@ -66,6 +66,7 @@ defmodule FakeMarathon do
   def port(fm), do: GenServer.call(fm, :port)
   def base_url(fm), do: "http://localhost:#{port(fm)}"
   def event(fm, event, data), do: GenServer.call(fm, {:event, event, data})
+  def keepalive(fm), do: GenServer.call(fm, :keepalive)
   def end_stream(fm), do: GenServer.call(fm, :end_stream)
   def sse_stream(fm, pid), do: GenServer.call(fm, {:sse_stream, pid})
 
@@ -97,14 +98,17 @@ defmodule FakeMarathon do
   def handle_call(:port, _from, state), do: {:reply, state.port, state}
 
   def handle_call({:sse_stream, pid}, _from, state) do
-    Logger.debug("FakeMarathon.sse_stream: #{inspect pid}")
     new_state = %{state | sse_streams: [pid | state.sse_streams]}
     {:reply, :ok, new_state}
   end
 
   def handle_call({:event, _, _}=event, _from, state) do
-    Logger.debug("FakeMarathon.event: #{inspect event}")
     Enum.each(state.sse_streams, &SSEHandler.event(&1, event))
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:keepalive, _from, state) do
+    Enum.each(state.sse_streams, &SSEHandler.keepalive/1)
     {:reply, :ok, state}
   end
 

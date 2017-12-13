@@ -3,6 +3,7 @@ defmodule MarathonEventExporter.MarathonClientTest do
 
   alias MarathonEventExporter.MarathonClient
   import TestHelpers
+  import ExUnit.CaptureLog
 
   test "stream_events streams events to a listener process" do
     {:ok, fm} = start_supervised(FakeMarathon)
@@ -62,5 +63,32 @@ defmodule MarathonEventExporter.MarathonClientTest do
     event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
     FakeMarathon.event(fm, event.event, event.data)
     assert_receive {:sse, ^event}, 1_000
+  end
+
+  test "stream_events times out if no data is received for too long" do
+    # Trap exits so the start_link in stream_events doesn't break the test.
+    Process.flag(:trap_exit, true)
+    {:ok, fm} = start_supervised(FakeMarathon)
+    base_url = FakeMarathon.base_url(fm)
+    {:ok, se} = MarathonClient.stream_events(base_url, [self()], 100)
+    ref = Process.monitor(se)
+
+    # Send keepalives for longer than our timeout interval.
+    FakeMarathon.keepalive(fm)
+    Process.sleep(50)
+    FakeMarathon.keepalive(fm)
+    Process.sleep(50)
+    FakeMarathon.keepalive(fm)
+
+    # Stream an event, assert that we receive it within a second.
+    event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
+    FakeMarathon.event(fm, event.event, event.data)
+    assert_receive {:sse, ^event}, 1_000
+
+    # Capture the error that gets logged outside our control.
+    assert capture_log(fn ->
+      # Wait for the timeout.
+      assert_receive {:DOWN, ^ref, :process, _, {:closed, :timeout}}, 150
+    end) =~ ~r/\[error\] .* terminating\n\*\* \(stop\) \{:closed, :timeout\}/
   end
 end
