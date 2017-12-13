@@ -66,7 +66,7 @@ defmodule MarathonEventExporter.MarathonClient do
     end
 
     def handle_info(msg, state) do
-      Logger.debug("Unexpected message: #{inspect msg}")
+      Logger.debug("Unexpected message: #{inspect msg}") # noqa
       {:noreply, state}
     end
   end
