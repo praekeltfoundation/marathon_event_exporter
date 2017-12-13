@@ -36,6 +36,15 @@ defmodule MarathonEventExporter.MarathonClientTest do
     assert_receive {:DOWN, ^ref, :process, _, :normal}, 1_000
   end
 
+  test "stream_events fails on a bad response" do
+    # Trap exits so the start_link in stream_events doesn't break the test.
+    Process.flag(:trap_exit, true)
+    {:ok, fm} = start_supervised(FakeMarathon)
+    base_url = FakeMarathon.base_url(fm)
+    {:error, err} =  MarathonClient.stream_events(base_url <> "/bad", [self()])
+    assert err =~ ~r/Error connecting to event stream: .*{code: 404/
+  end
+
   test "stream_events only returns once a response is received" do
     # On my machine, without waiting for the response, the delay is
     # consistently under 100ms. I chose 250ms here as a balance between
