@@ -19,11 +19,13 @@ defmodule FakeMarathon do
   require Logger
 
   defmodule HandlerState do
-    defstruct stream_handler: nil
+    defstruct stream_handler: nil, delay: nil
   end
 
   defmodule SSEHandler do
     def init(req, state) do
+      # state.delay is nil (which is falsey) or an integer (which is truthy).
+      if state.delay, do: Process.sleep(state.delay)
       new_req = :cowboy_req.stream_reply(
         200, %{"content-type" => "text/event-stream"}, req)
       FakeMarathon.sse_stream(state.stream_handler, self())
@@ -58,8 +60,8 @@ defmodule FakeMarathon do
 
   ## Client
 
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, :ok)
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts)
   end
   def port(fm), do: GenServer.call(fm, :port)
   def base_url(fm), do: "http://localhost:#{port(fm)}"
@@ -69,11 +71,15 @@ defmodule FakeMarathon do
 
   ## Callbacks
 
-  def init(:ok) do
+  def init(opts) do
     # Trap exits so terminate/2 gets called reliably.
     Process.flag(:trap_exit, true)
+    handler_state = %HandlerState{
+      stream_handler: self(),
+      delay: Keyword.get(opts, :response_delay),
+    }
     handlers = [
-      {"/v2/events", SSEHandler, %HandlerState{stream_handler: self()}},
+      {"/v2/events", SSEHandler, handler_state},
     ]
     dispatch = :cowboy_router.compile([{:_, handlers}])
     listener_ref = make_ref()

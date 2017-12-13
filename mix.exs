@@ -27,6 +27,11 @@ defmodule MarathonEventExporter.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # 2017-12-13: The latest hackney release (1.10.1) has a bug in async
+      # request cleanup: https://github.com/benoitc/hackney/issues/447 The
+      # partial fix in master leaves us with a silent deadlock, so for now
+      # we'll use an earlier version.
+      {:hackney, "~> 1.9.0"},
       {:httpoison, "~> 0.13"},
       {:cowboy, "~> 2.1"},
       {:exjsx, "~> 4.0", only: :test},

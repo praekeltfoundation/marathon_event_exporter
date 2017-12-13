@@ -28,7 +28,6 @@ defmodule MarathonEventExporter.MarathonClient do
       GenServer.start_link(__MODULE__, {url, listeners}, opts)
     end
 
-
     ## Server callbacks
 
     def init({url, listeners}) do
@@ -36,11 +35,18 @@ defmodule MarathonEventExporter.MarathonClient do
       {:ok, ssep} = SSEParser.start_link([])
       Enum.each(listeners, fn l -> SSEParser.register_listener(ssep, l) end)
       r = HTTPoison.get!(url, headers, stream_to: self(), recv_timeout: 60_000)
-      {:ok, {r, ssep}}
+      # It's safe to receive in here, because the main GenServer receive loop
+      # has not yet started.
+      receive do
+        %HTTPoison.AsyncStatus{code: 200} ->
+          {:ok, {r, ssep}}
+        msg ->
+          Logger.debug("Failed to : #{inspect msg}")
+          {:stop, "Error connecting to event stream: #{inspect msg}"}
+      end
     end
 
-    def handle_info(msg=%HTTPoison.AsyncChunk{chunk: chunk}, {_, ssep}=state) do
-      Logger.debug("msg: #{inspect msg}")
+    def handle_info(%HTTPoison.AsyncChunk{chunk: chunk}, {_, ssep}=state) do
       SSEParser.feed_data(ssep, chunk)
       {:noreply, state}
     end

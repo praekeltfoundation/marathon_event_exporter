@@ -8,11 +8,6 @@ defmodule MarathonEventExporter.MarathonClientTest do
     {:ok, fm} = start_supervised(FakeMarathon)
     base_url = FakeMarathon.base_url(fm)
     {:ok, _} = MarathonClient.stream_events(base_url, [self()])
-    # FIXME: stream_events returns as soon as the request has been sent, which
-    # means the server may not have received it yet. This creates a race
-    # between the stream setup and the first event, so until that's fixed we'll
-    # just wait a few milliseconds here.
-    Process.sleep(65)
 
     # Stream an event, assert that we receive it within a second.
     event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
@@ -30,11 +25,6 @@ defmodule MarathonEventExporter.MarathonClientTest do
     base_url = FakeMarathon.base_url(fm)
     {:ok, se} = MarathonClient.stream_events(base_url, [self()])
     ref = Process.monitor(se)
-    # FIXME: stream_events returns as soon as the request has been sent, which
-    # means the server may not have received it yet. This creates a race
-    # between the stream setup and the first event, so until that's fixed we'll
-    # just wait a few milliseconds here.
-    Process.sleep(65)
 
     # Stream an event, assert that we receive it within a second.
     event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
@@ -44,5 +34,24 @@ defmodule MarathonEventExporter.MarathonClientTest do
     # Close the connection on the server side.
     FakeMarathon.end_stream(fm)
     assert_receive {:DOWN, ^ref, :process, _, :normal}, 1_000
+  end
+
+  test "stream_events only returns once a response is received" do
+    # On my machine, without waiting for the response, the delay is
+    # consistently under 100ms. I chose 250ms here as a balance between
+    # incorrect results and waiting too long.
+    delay_ms = 250
+
+    {:ok, fm} = start_supervised({FakeMarathon, [response_delay: delay_ms]})
+    base_url = FakeMarathon.base_url(fm)
+    t0 = Time.utc_now()
+    {:ok, _} = MarathonClient.stream_events(base_url, [self()])
+    t1 = Time.utc_now()
+    assert Time.diff(t1, t0, :milliseconds) >= delay_ms
+
+    # Stream an event, assert that we receive it within a second.
+    event = marathon_event("event_stream_attached", remoteAddress: "127.0.0.1")
+    FakeMarathon.event(fm, event.event, event.data)
+    assert_receive {:sse, ^event}, 1_000
   end
 end
