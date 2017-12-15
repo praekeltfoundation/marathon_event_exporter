@@ -24,8 +24,8 @@ defmodule MarathonEventExporter.MarathonClient do
     @doc """
     Starts a new StreamCatcher.
     """
-    def start_link({url, listeners, timeout}, opts \\ []) do
-      GenServer.start_link(__MODULE__, {url, listeners, timeout}, opts)
+    def start({url, listeners, timeout}, opts \\ []) do
+      GenServer.start(__MODULE__, {url, listeners, timeout}, opts)
     end
 
     ## Server callbacks
@@ -72,7 +72,7 @@ defmodule MarathonEventExporter.MarathonClient do
   end
 
   def stream_events(base_url, listeners, timeout \\ 60_000) do
-    StreamCatcher.start_link(
+    StreamCatcher.start(
       {base_url <> "/v2/events", listeners, timeout})
   end
 end

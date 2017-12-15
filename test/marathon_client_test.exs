@@ -66,8 +66,6 @@ defmodule MarathonEventExporter.MarathonClientTest do
   end
 
   test "stream_events times out if no data is received for too long" do
-    # Trap exits so the start_link in stream_events doesn't break the test.
-    Process.flag(:trap_exit, true)
     {:ok, fm} = start_supervised(FakeMarathon)
     base_url = FakeMarathon.base_url(fm)
     {:ok, se} = MarathonClient.stream_events(base_url, [self()], 100)
