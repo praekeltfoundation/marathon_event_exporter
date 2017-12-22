@@ -10,8 +10,8 @@ defmodule MarathonEventExporter.EventCounter do
 
   ## Client API
 
-  def start_link do
-    GenServer.start_link(__MODULE__, :ok, [])
+  def start_link(_arg, options \\ []) do
+    GenServer.start_link(__MODULE__, :ok, options)
   end
 
   @doc "Get the mapping of all event types to counts."
