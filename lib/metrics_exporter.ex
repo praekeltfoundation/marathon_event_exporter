@@ -39,8 +39,8 @@ defmodule MarathonEventExporter.MetricsExporter do
     defstruct port: nil
   end
 
-  def start_link({port, event_counter}) do
-    GenServer.start_link(__MODULE__, {port, event_counter})
+  def start_link({port, event_counter}, opts \\ []) do
+    GenServer.start_link(__MODULE__, {port, event_counter}, opts)
   end
 
   @doc "Get the port this server is listening on."
