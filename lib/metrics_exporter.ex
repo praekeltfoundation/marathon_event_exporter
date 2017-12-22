@@ -5,53 +5,30 @@ defmodule MarathonEventExporter.MetricsExporter do
 
   use GenServer
 
-  defmodule MetricsAgent do
-    @moduledoc """
-    Agent to keep a mapping of event type to the number of times that event has
-    occurred.
-    """
-    use Agent
-    alias MarathonEventExporter.SSEParser.Event
-
-    def start_link(_) do
-      Agent.start_link(fn -> %{} end, name: __MODULE__)
-    end
-
-    @doc """
-    Increment the count of the number of times an event type has occurred.
-    """
-    def increment_event(ma, %Event{event: event}) do
-      Agent.update(ma, fn state -> Map.update(state, event, 1, &(&1 + 1)) end)
-    end
-
-    @doc "Get the mapping of all event types to counts."
-    def get_events(ma) do
-      Agent.get(ma, fn state -> state end)
-    end
-  end
+  alias MarathonEventExporter.EventCounter
 
   defmodule MetricsHandler do
-    defp events_header do
+    defp header do
       [
         "# HELP marathon_events_total The total number of Marathon events.",
         "# TYPE marathon_events_total counter",
       ]
     end
 
-    defp events_metrics(events) do
-      Stream.map(events, fn
+    defp metrics(counts) do
+      Stream.map(counts, fn
         {event, count} -> ~s'marathon_events_total{event="#{event}"} #{count}'
       end)
     end
 
     @doc "Converts a mapping of event counts to Prometheus metrics"
-    def events_to_metrics(events) do
-      Stream.concat([events_header(), events_metrics(events), [""]])
+    def counts_to_metrics(counts) do
+      Stream.concat([header(), metrics(counts), [""]])
       |> Enum.join("\n")
     end
 
-    def init(req, %{metrics_agent: metrics_agent}=state) do
-      metrics = MetricsAgent.get_events(metrics_agent) |> events_to_metrics
+    def init(req, %{event_counter: ec}=state) do
+      metrics = EventCounter.event_counts(ec) |> counts_to_metrics
       new_req = :cowboy_req.reply(
         200, %{"content-type" => "text/plain; version=0.0.4"}, metrics, req)
       {:ok, new_req, state}
@@ -59,30 +36,27 @@ defmodule MarathonEventExporter.MetricsExporter do
   end
 
   defmodule State do
-    defstruct port: nil, metrics_agent: nil
+    defstruct port: nil
   end
 
-  def start_link({port, metrics_agent}) do
-    GenServer.start_link(__MODULE__, {port, metrics_agent})
+  def start_link({port, event_counter}) do
+    GenServer.start_link(__MODULE__, {port, event_counter})
   end
 
   @doc "Get the port this server is listening on."
   def port(es), do: GenServer.call(es, :port)
 
-  def init({port, metrics_agent}) do
+  def init({port, event_counter}) do
     # Trap exits so terminate/2 gets called reliably.
     Process.flag(:trap_exit, true)
     handlers = [
-      {"/metrics", MetricsHandler, %{metrics_agent: metrics_agent}},
+      {"/metrics", MetricsHandler, %{event_counter: event_counter}},
     ]
     dispatch = :cowboy_router.compile([{:_, handlers}])
     {:ok, listener} = :cowboy.start_clear(
       :exporter_listener, [port: port], %{env: %{dispatch: dispatch}})
     Process.link(listener)
-    {:ok, %State{
-      port: :ranch.get_port(:exporter_listener),
-      metrics_agent: metrics_agent
-    }}
+    {:ok, %State{port: :ranch.get_port(:exporter_listener)}}
   end
 
   def terminate(reason, _state) do
@@ -91,9 +65,4 @@ defmodule MarathonEventExporter.MetricsExporter do
   end
 
   def handle_call(:port, _from, state), do: {:reply, state.port, state}
-
-  def handle_info({:sse, event}, state) do
-    MetricsAgent.increment_event(state.metrics_agent, event)
-    {:noreply, state}
-  end
 end
