@@ -7,7 +7,7 @@ defmodule MarathonEventExporter.SSEClientTest do
 
   def stream_events(fm, timeout \\ 60_000) do
     url = FakeMarathon.base_url(fm) <> "/v2/events"
-    SSEClient.start({url, [self()], timeout})
+    SSEClient.start_link({url, [self()], timeout})
   end
 
   test "the SSE client streams events to a listener process" do
@@ -45,7 +45,7 @@ defmodule MarathonEventExporter.SSEClientTest do
     Process.flag(:trap_exit, true)
     {:ok, fm} = start_supervised(FakeMarathon)
     base_url = FakeMarathon.base_url(fm)
-    {:error, err} =  SSEClient.start({base_url <> "/bad", [self()], 60_000})
+    {:error, err} = SSEClient.start_link({base_url <> "/bad", [self()], 60_000})
     assert err =~ ~r/Error connecting to event stream: .*{code: 404/
   end
 
@@ -68,6 +68,8 @@ defmodule MarathonEventExporter.SSEClientTest do
   end
 
   test "the SSE client times out if no data is received for too long" do
+    # Trap exits so the start_link in stream_events doesn't break the test.
+    Process.flag(:trap_exit, true)
     {:ok, fm} = start_supervised(FakeMarathon)
     {:ok, sc} = stream_events(fm, 100)
     ref = Process.monitor(sc)

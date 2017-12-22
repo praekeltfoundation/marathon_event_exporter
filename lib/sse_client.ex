@@ -17,8 +17,8 @@ defmodule MarathonEventExporter.SSEClient do
   @doc """
   Starts a new SSEClient.
   """
-  def start({url, listeners, timeout}, opts \\ []) do
-    GenServer.start(__MODULE__, {url, listeners, timeout}, opts)
+  def start_link({url, listeners, timeout}, opts \\ []) do
+    GenServer.start_link(__MODULE__, {url, listeners, timeout}, opts)
   end
 
   ## Server callbacks
