@@ -10,7 +10,7 @@ defmodule MarathonEventExporter.EventCounter do
 
   ## Client API
 
-  def start_link(_arg, opts \\ []) do
+  def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
