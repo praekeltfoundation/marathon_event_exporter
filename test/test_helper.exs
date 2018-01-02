@@ -11,6 +11,24 @@ defmodule EventCatcher do
   def handle_info({:sse, event}, events), do: {:noreply, [event | events]}
 end
 
+defmodule TestHelpers do
+  alias MarathonEventExporter.SSEParser.Event
+
+  @doc """
+  Build a Marathon event from the given type and fields.
+
+  The :eventType field is always added/overridden, the :timestamp field is
+  added if one is not provided.
+  """
+  def marathon_event(event_type, fields) do
+    {:ok, data} = Map.new(fields)
+    |> Map.put_new(:timestamp, DateTime.utc_now |> DateTime.to_iso8601)
+    |> Map.put(:eventType, event_type)
+    |> JSX.encode
+    %Event{event: event_type, data: data}
+  end
+end
+
 defmodule FakeMarathon do
   @moduledoc """
   A fake Marathon API that can stream events.
@@ -66,6 +84,10 @@ defmodule FakeMarathon do
   def port(fm), do: GenServer.call(fm, :port)
   def base_url(fm), do: "http://localhost:#{port(fm)}"
   def event(fm, event, data), do: GenServer.call(fm, {:event, event, data})
+  def mk_event(handler, event_type, fields) do
+    e = TestHelpers.marathon_event(event_type, fields)
+    event(handler, e.event, e.data)
+  end
   def keepalive(fm), do: GenServer.call(fm, :keepalive)
   def end_stream(fm), do: GenServer.call(fm, :end_stream)
   def sse_stream(fm, pid), do: GenServer.call(fm, {:sse_stream, pid})
@@ -115,24 +137,6 @@ defmodule FakeMarathon do
   def handle_call(:end_stream, _from, state) do
     Enum.each(state.sse_streams, &SSEHandler.close/1)
     {:reply, :ok, state}
-  end
-end
-
-defmodule TestHelpers do
-  alias MarathonEventExporter.SSEParser.Event
-
-  @doc """
-  Build a Marathon event from the given type and fields.
-
-  The :eventType field is always added/overridden, the :timestamp field is
-  added if one is not provided.
-  """
-  def marathon_event(event_type, fields) do
-    {:ok, data} = Map.new(fields)
-    |> Map.put_new(:timestamp, DateTime.utc_now |> DateTime.to_iso8601)
-    |> Map.put(:eventType, event_type)
-    |> JSX.encode
-    %Event{event: event_type, data: data}
   end
 end
 
