@@ -1,13 +1,29 @@
 defmodule MarathonEventExporter.Supervisor do
+  @moduledoc """
+  The parent Supervisor for the overall program. Supervises the EventCounter
+  process as well as the Supervisor for the other processes.
+  """
+
   use Supervisor
 
   alias MarathonEventExporter.{SSEClient, EventCounter, MetricsExporter}
 
-  def start_link(arg, options \\ []) do
-    Supervisor.start_link(__MODULE__, arg, options)
+  @doc """
+  Starts a new Supervisor.
+
+  `url` is the URL for the Marathon event stream.
+  `timeout` is the timeout value (ms) for the event stream connection.
+  `port` is the port that the metrics exporter should listen on.
+  """
+  def start_link({url, timeout, port}, options \\ []) do
+    Supervisor.start_link(__MODULE__, {url, timeout, port}, options)
   end
 
   defmodule FrontendSupervisor do
+    @moduledoc """
+    A Supervisor to manage the SSEClient and MetricsExporter which are two
+    do not have any dependent processes and so can be restarted independently.
+    """
     use Supervisor
 
     def start_link(arg, options \\ []) do
