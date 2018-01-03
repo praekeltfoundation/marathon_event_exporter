@@ -12,8 +12,6 @@ defmodule EventCatcher do
 end
 
 defmodule TestHelpers do
-  alias MarathonEventExporter.SSEParser.Event
-
   @doc """
   Build a Marathon event from the given type and fields.
 
@@ -21,11 +19,32 @@ defmodule TestHelpers do
   added if one is not provided.
   """
   def marathon_event(event_type, fields) do
+    alias MarathonEventExporter.SSEParser.Event
     {:ok, data} = Map.new(fields)
     |> Map.put_new(:timestamp, DateTime.utc_now |> DateTime.to_iso8601)
     |> Map.put(:eventType, event_type)
     |> JSX.encode
     %Event{event: event_type, data: data}
+  end
+
+  @doc "Make a URL for a locally-hosted MetricsExporter."
+  def make_metrics_url(me) do
+    alias MarathonEventExporter.MetricsExporter
+    "http://localhost:#{MetricsExporter.port(me)}/metrics"
+  end
+
+  @doc """
+  Assert that a request against a MetricsExporter is successful and reflects
+  the expected event counts.
+  """
+  def assert_metrics_response(me, event_counts \\ %{}) do
+    import ExUnit.Assertions
+
+    {:ok, response} = HTTPoison.get(make_metrics_url(me))
+    assert response.status_code == 200
+    event_counts
+      |> Enum.map(fn {e, c} -> ~s'marathon_events_total{event="#{e}"} #{c}' end)
+      |> Enum.each(fn metric -> assert response.body =~ metric end)
   end
 end
 

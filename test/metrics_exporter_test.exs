@@ -14,9 +14,6 @@ defmodule MarathonEventExporter.MetricsExporterTest do
   def get_header(response, header_name),
     do: response.headers |> List.keyfind(header_name, 0) |> elem(1)
 
-  def make_metrics_url(me),
-    do: "http://localhost:#{MetricsExporter.port(me)}/metrics"
-
   test "returns only the metric metadata when no events received", %{me: me} do
     metrics_url = make_metrics_url(me)
     {:ok, response} = HTTPoison.get(metrics_url)
@@ -38,12 +35,9 @@ defmodule MarathonEventExporter.MetricsExporterTest do
     send(ec, {:sse, event2})
     send(ec, {:sse, event3})
 
-    metrics_url = make_metrics_url(me)
-    {:ok, response} = HTTPoison.get(metrics_url)
-    assert response.status_code == 200
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_attached"} 2'
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_detached"} 1'
+    assert_metrics_response(me, %{
+      "event_stream_attached" => 2,
+      "event_stream_detached" => 1,
+    })
   end
 end

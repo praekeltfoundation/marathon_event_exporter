@@ -3,21 +3,13 @@ defmodule MarathonEventExporter.SupervisorTest do
 
   alias MarathonEventExporter.{
     Supervisor, EventCounter, SSEClient, MetricsExporter}
+  import TestHelpers
 
   setup do
     {:ok, fm} = start_supervised(FakeMarathon)
     url = FakeMarathon.base_url(fm) <> "/v2/events"
     {:ok, sup} = start_supervised({Supervisor, {url, 60_000, 0}})
     %{fm: fm, sup: sup}
-  end
-
-  def make_metrics_url(me),
-    do: "http://localhost:#{MetricsExporter.port(me)}/metrics"
-
-  def assert_metrics_response() do
-    {:ok, response} = HTTPoison.get(make_metrics_url(MetricsExporter))
-    assert response.status_code == 200
-    response
   end
 
   test "when events are received the resulting metrics can be queried", %{fm: fm} do
@@ -28,11 +20,10 @@ defmodule MarathonEventExporter.SupervisorTest do
     # Wait for the events to arrive :-/
     Process.sleep(50)
 
-    response = assert_metrics_response()
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_attached"} 2'
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_detached"} 1'
+    assert_metrics_response(MetricsExporter, %{
+      "event_stream_attached" => 2,
+      "event_stream_detached" => 1,
+    })
   end
 
   test "when the EventCounter exits the client & exporter are restarted" do
@@ -53,7 +44,7 @@ defmodule MarathonEventExporter.SupervisorTest do
     Process.sleep(50)
 
     # Things still work as everything has been restarted
-    assert_metrics_response()
+    assert_metrics_response(MetricsExporter)
   end
 
   test "when the SSE client exits everything else still works", %{fm: fm} do
@@ -71,8 +62,6 @@ defmodule MarathonEventExporter.SupervisorTest do
     assert_receive {:DOWN, ^client_ref, :process, _, :normal}, 1_000
 
     # Everything else still works because it's all still running
-    response = assert_metrics_response()
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_detached"} 1'
+    assert_metrics_response(MetricsExporter, %{"event_stream_detached" => 1})
   end
 end
