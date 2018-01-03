@@ -21,8 +21,8 @@ defmodule MarathonEventExporter.Supervisor do
 
   defmodule FrontendSupervisor do
     @moduledoc """
-    A Supervisor to manage the SSEClient and MetricsExporter which are two
-    do not have any dependent processes and so can be restarted independently.
+    A Supervisor to manage the SSEClient and MetricsExporter which do not have
+    any dependent processes and so can be restarted independently.
     """
     use Supervisor
 
