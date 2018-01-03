@@ -21,8 +21,8 @@ defmodule MarathonEventExporter.EventCounter do
 
   def init(:ok), do: {:ok, %{}}
 
-  def handle_info({:sse, %Event{event: event}}, state),
-    do: {:noreply, Map.update(state, event, 1, &(&1 + 1))}
+  def handle_info({:sse, %Event{event: event}}, counts),
+    do: {:noreply, Map.update(counts, event, 1, &(&1 + 1))}
 
-  def handle_call(:event_counts, _from, state), do: {:reply, state, state}
+  def handle_call(:event_counts, _from, counts), do: {:reply, counts, counts}
 end
