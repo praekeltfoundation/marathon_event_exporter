@@ -20,7 +20,7 @@ defmodule MarathonEventExporter.SupervisorTest do
     response
   end
 
-  test "it works", %{fm: fm} do
+  test "when events are received the resulting metrics can be queried", %{fm: fm} do
     FakeMarathon.mk_event(fm, "event_stream_attached", remoteAddress: "10.0.0.1")
     FakeMarathon.mk_event(fm, "event_stream_detached", remoteAddress: "10.0.0.1")
     FakeMarathon.mk_event(fm, "event_stream_attached", remoteAddress: "10.0.0.1")
