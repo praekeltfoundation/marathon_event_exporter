@@ -11,13 +11,14 @@ defmodule MarathonEventExporter.SupervisorTest do
     %{fm: fm, sup: sup}
   end
 
-  def make_metrics_url(me),
-    do: "http://localhost:#{MetricsExporter.port(me)}/metrics"
+  def assert_metrics_response(event_counts \\ %{}) do
+    url = "http://localhost:#{MetricsExporter.port(MetricsExporter)}/metrics"
+    {:ok, response} = HTTPoison.get(url)
 
-  def assert_metrics_response() do
-    {:ok, response} = HTTPoison.get(make_metrics_url(MetricsExporter))
     assert response.status_code == 200
-    response
+    event_counts
+      |> Enum.map(fn {e, c} -> ~s'marathon_events_total{event="#{e}"} #{c}' end)
+      |> Enum.each(fn metric -> assert response.body =~ metric end)
   end
 
   test "when events are received the resulting metrics can be queried", %{fm: fm} do
@@ -28,11 +29,10 @@ defmodule MarathonEventExporter.SupervisorTest do
     # Wait for the events to arrive :-/
     Process.sleep(50)
 
-    response = assert_metrics_response()
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_attached"} 2'
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_detached"} 1'
+    assert_metrics_response(%{
+      "event_stream_attached" => 2,
+      "event_stream_detached" => 1,
+    })
   end
 
   test "when the EventCounter exits the client & exporter are restarted" do
@@ -71,8 +71,6 @@ defmodule MarathonEventExporter.SupervisorTest do
     assert_receive {:DOWN, ^client_ref, :process, _, :normal}, 1_000
 
     # Everything else still works because it's all still running
-    response = assert_metrics_response()
-    assert response.body =~
-      ~s'marathon_events_total{event="event_stream_detached"} 1'
+    assert_metrics_response(%{"event_stream_detached" => 1})
   end
 end
