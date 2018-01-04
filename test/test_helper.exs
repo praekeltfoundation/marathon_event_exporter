@@ -140,4 +140,11 @@ defmodule FakeMarathon do
   end
 end
 
+# We don't start applications during tests because we don't want our own app
+# running, but we do need all its dependencies running.
+Application.load(:marathon_event_exporter)
+for app <- Application.spec(:marathon_event_exporter, :applications) do
+  Application.ensure_all_started(app)
+end
+
 ExUnit.start()
