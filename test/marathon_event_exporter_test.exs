@@ -7,11 +7,12 @@ defmodule MarathonEventExporterTest do
   setup do
     {:ok, fm} = start_supervised(FakeMarathon)
     url = FakeMarathon.base_url(fm) <> "/v2/events"
+    set_app_config(:marathon_url, url)
     %{fm: fm, url: url}
   end
 
   def set_app_config(key, value) do
-    old_value = Application.fetch_env(:marathon_event_exporter, key)
+    old_value = Application.fetch_env!(:marathon_event_exporter, key)
     on_exit(fn -> Application.put_env(:marathon_event_exporter, key, old_value) end)
     Application.put_env(:marathon_event_exporter, key, value)
   end
@@ -27,8 +28,7 @@ defmodule MarathonEventExporterTest do
   end
 
   @tag :application
-  test "the application publishes event metrics", %{fm: fm, url: url} do
-    set_app_config(:marathon_url, url)
+  test "the application publishes event metrics", %{fm: fm} do
     Application.start(:marathon_event_exporter)
     on_exit(fn -> Application.stop(:marathon_event_exporter) end)
 
@@ -44,6 +44,4 @@ defmodule MarathonEventExporterTest do
       "event_stream_detached" => 1,
     })
   end
-
-
 end

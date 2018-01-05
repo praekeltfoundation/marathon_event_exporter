@@ -78,7 +78,16 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
       hidden: false,
       to: "marathon_event_exporter.exporter_port",
       env_var: "MEE_EXPORTER_PORT",
-    ]
+    ],
+    "logger.level": [
+      commented: true,
+      datatype: :atom,
+      default: :debug,
+      doc: "Log level.",
+      hidden: false,
+      to: "logger.level",
+      env_var: "MEE_LOG_LEVEL"
+    ],
   ],
   transforms: [],
   validators: []
