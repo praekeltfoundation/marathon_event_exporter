@@ -5,16 +5,20 @@ defmodule MarathonEventExporter do
   TODO: Write something here.
   """
 
-  @doc """
-  Hello world.
+  use Application
 
-  ## Examples
+  alias MarathonEventExporter.Supervisor
 
-      iex> MarathonEventExporter.hello
-      :world
+  defp get_config(key), do: Application.fetch_env!(:marathon_event_exporter, key)
 
-  """
-  def hello do
-    :world
+  # Application callbacks
+
+  def start(_type, _args) do
+    config = {
+      get_config(:marathon_url),
+      get_config(:stream_timeout),
+      get_config(:exporter_port),
+    }
+    Supervisor.start_link(config, name: Supervisor)
   end
 end

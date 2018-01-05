@@ -28,3 +28,15 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+
+# These are the minimal required defaults. Full configuration defined in
+# marathon_event_exporter.schema.exs and marathon_event_exporter.*.conf
+config :marathon_event_exporter, [
+  # Assume localhost unless told otherwise
+  marathon_url: "http://localhost:8080/v2/events",
+  # We should get several keepalives per minute
+  stream_timeout: 60_000,
+  # Arbitrarily chosen to not conflict with anything in
+  # https://github.com/prometheus/prometheus/wiki/Default-port-allocations
+  exporter_port: 9595,
+]
