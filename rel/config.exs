@@ -24,4 +24,5 @@ release :marathon_event_exporter do
   set applications: [
     :runtime_tools
   ]
+  plugin Conform.ReleasePlugin
 end
