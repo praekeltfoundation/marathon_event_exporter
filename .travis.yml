@@ -12,6 +12,7 @@ after_success:
 
 jobs:
   include:
+    - stage: test
     - sudo: required
       group: trusty_latest
       services: docker
