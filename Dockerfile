@@ -45,10 +45,11 @@ WORKDIR /app
 COPY --from=builder /build/_build/prod/rel/marathon_event_exporter/ ./
 
 # We need runtime write access to /app/var as a non-root user.
-RUN mkdir var && chown nobody var
+RUN addgroup -S mee && adduser -S -g mee -h /app mee
+RUN mkdir var && chown mee var
 
 # Run as non-root.
-USER nobody
+USER mee
 
 # REPLACE_OS_VARS lets us use envvars to configure some runtime parameters.
 # Currently we only support using $ERLANG_COOKIE to set the cookie.
