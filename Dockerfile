@@ -2,7 +2,7 @@
 # Build stage #
 ###############
 
-FROM  elixir:1.5-alpine
+FROM elixir:1.5-alpine AS builder
 
 WORKDIR /build
 
@@ -42,9 +42,7 @@ RUN apk add --no-cache bash tini openssl
 WORKDIR /app
 
 # Get the release we built earlier from the build container.
-COPY --from=0 /build/_build/prod/rel/marathon_event_exporter/ ./
-
-RUN ls -lh
+COPY --from=builder /build/_build/prod/rel/marathon_event_exporter/ ./
 
 # We need runtime write access to /app/var as a non-root user.
 RUN mkdir var && chown nobody var
