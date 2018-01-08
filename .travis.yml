@@ -12,7 +12,9 @@ after_success:
 
 jobs:
   include:
-    - stage: test
+    # We have to include an empty job to get the default build (above) to be
+    # built and not just overridden by the Docker build (below).
+    - {}
     - sudo: required
       group: trusty_latest
       services: docker
