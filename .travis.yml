@@ -1,8 +1,5 @@
 language: elixir
 
-elixir: '1.5'
-otp_release: '19.0'
-
 script:
   # This is basically `mix test` with coverage enabled.
   - mix coveralls.json
@@ -12,9 +9,9 @@ after_success:
 
 jobs:
   include:
-    # We have to include an empty job to get the default build (above) to be
-    # built and not just overridden by the Docker build (below).
-    - {}
+    - elixir: '1.5'
+      otp_release: '19.0'
+
     - sudo: required
       group: trusty_latest
       services: docker
