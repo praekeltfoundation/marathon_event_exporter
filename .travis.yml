@@ -1,11 +1,43 @@
 language: elixir
 
-elixir: '1.5'
-otp_release: '19.0'
-
 script:
   # This is basically `mix test` with coverage enabled.
   - mix coveralls.json
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+jobs:
+  include:
+    - elixir: '1.5'
+      otp_release: '19.0'
+
+    - sudo: required
+      group: trusty_latest
+      services: docker
+      language: python
+
+      env:
+        - IMAGE_NAME=praekeltfoundation/marathon_event_exporter
+        - REGISTRY_USER=praekeltorgdeploy
+        - secure: "dqTwlb3DdjFITXLWSqnV4+WzmcF5vvMu1fNrxyeY4XpRxFFovUs2+n+3I3R7MCuMBH35xzF0M9xwnvovnvEY+w8/zPd+lXI+958UqCBlP6urr2p2fCGoaPo4Kru3Ya4ZFCD5kGbBSurXce++CTNKC39Q8l9nDY+bFrP4Rd6U9aVHuOm+wNeZfWdUXbGT4h0nUuW2Hu4TOA9NmREaAhWdPzbjnOO/K65x31easvzjY10b3uu0ryD99m87ANB2nlZfp5r/lkGX6h9L+Bza0ro/vpJMcKkWsFHtHV6kfz3d696oRXxeFRtUDbfQ47v/J2nyzmm4RKTZKd7bM22AFfggnwiBjQBKWAitmHH9k49vUkgftf4UioIoSdw3zRxHbFqKvSvDq+yYvBzyhVITrdF+RmP+2ry2YArU+29wB/oQa7oyw34trftcKGQ6RyEacEqwaefig70bIPM62qoAmfyhMTFT9bGANulrLRx1fkVx37mJvpGpGVaGE5AduP6P0oNL4YMZbomGOzPDwXaWyKL9q+rVBm/9LQIQQdnjQywp2R1Ype7qWbpqEPKmi4WEdTtG2hpoS6T+4KgcwElCkYuoNjO7OC3Ju6JZSMoz9e5PJjZ67hfv7vFiaOtay6K3ViX+NCh0weH3QmTS1e3PB3DHvKA7dpxyAnPcsHivZKL+KHo="
+
+      before_script:
+        - docker pull "$IMAGE_NAME:develop" || true
+      script:
+        - docker build --pull --cache-from "$IMAGE_NAME:develop" -t "$IMAGE_NAME" .
+      after_script:
+        - docker images
+
+      before_deploy:
+        - pip install docker-ci-deploy==0.3.0
+        - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
+      deploy:
+        provider: script
+        script: dcd -t develop -V "$(git rev-parse --short HEAD)" -L "$IMAGE_NAME"
+        on:
+          branch: develop
+
+      # Clear unused build stages
+      after_success: []
+      install: []

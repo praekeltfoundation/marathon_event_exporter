@@ -29,7 +29,7 @@ defmodule MarathonEventExporter.Mixfile do
   def application do
     [
       extra_applications: [:logger],
-      mod: {MarathonEventExporter, []},
+      mod: {MarathonEventExporter, nil},
     ]
   end
 
@@ -46,6 +46,8 @@ defmodule MarathonEventExporter.Mixfile do
       {:cowboy, "~> 2.1"},
       {:exjsx, "~> 4.0", only: :test},
       {:excoveralls, "~> 0.7", only: :test},
+      {:distillery, "~> 1.5", runtime: false},
+      {:mix_docker, "~> 0.5.0", runtime: false},
     ]
   end
 end
