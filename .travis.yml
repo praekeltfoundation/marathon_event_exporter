@@ -9,3 +9,14 @@ script:
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+jobs:
+  include:
+    - sudo: required
+      group: trusty_latest
+      services: docker
+
+      script:
+        - docker build -t praekeltfoundation/marathon_event_exporter .
+      after_script:
+        - docker images
