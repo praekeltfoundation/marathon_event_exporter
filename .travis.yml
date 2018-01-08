@@ -16,8 +16,29 @@ jobs:
     - sudo: required
       group: trusty_latest
       services: docker
+      language: python
 
+      env:
+        - IMAGE_NAME=praekeltfoundation/marathon_event_exporter
+        - REGISTRY_USER=praekeltorgdeploy
+        - REGISTRY_PASS=secret  # TODO
+
+      before_script:
+        - docker pull "$IMAGE_NAME:develop" || true
       script:
-        - docker build -t praekeltfoundation/marathon_event_exporter .
+        - docker build --pull --cache-from "$IMAGE_NAME:develop" -t "$IMAGE_NAME" .
       after_script:
         - docker images
+
+      before_deploy:
+        - pip install docker-ci-deploy==0.3.0
+        - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
+      deploy:
+        provider: script
+        script: dcd -t develop -V "$(git rev-parse --short HEAD)" -L "$IMAGE_NAME"
+        on:
+          branch: develop
+
+      # Clear unused build stages
+      after_success: []
+      install: []
