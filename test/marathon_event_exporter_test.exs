@@ -29,7 +29,7 @@ defmodule MarathonEventExporterTest do
 
   @tag :application
   test "the application publishes event metrics", %{fm: fm} do
-    Application.start(:marathon_event_exporter)
+    :ok = Application.start(:marathon_event_exporter)
     on_exit(fn -> Application.stop(:marathon_event_exporter) end)
 
     FakeMarathon.mk_event(fm, "event_stream_attached", remoteAddress: "10.0.0.1")

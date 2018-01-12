@@ -14,5 +14,6 @@
   "mix_docker": {:hex, :mix_docker, "0.5.0", "c7ad34008c43d4a949d69721f39c4d2a2afc509c179926a683117ea8dff8af59", [], [{:distillery, "~> 1.2", [hex: :distillery, repo: "hexpm", optional: false]}], "hexpm"},
   "neotoma": {:hex, :neotoma, "1.7.3", "d8bd5404b73273989946e4f4f6d529e5c2088f5fa1ca790b4dbe81f4be408e61", [], [], "hexpm"},
   "ranch": {:hex, :ranch, "1.4.0", "10272f95da79340fa7e8774ba7930b901713d272905d0012b06ca6d994f8826b", [], [], "hexpm"},
+  "sse_test_server": {:git, "https://github.com/praekeltfoundation/sse_test_server.git", "1109a521d70ed5246a0b7d50102518f61b6075e1", [ref: "1109a521d70ed5246a0b7d50102518f61b6075e1"]},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.1", "28a4d65b7f59893bc2c7de786dec1e1555bd742d336043fe644ae956c3497fbe", [], [], "hexpm"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.3.1", "a1f612a7b512638634a603c8f401892afbf99b8ce93a45041f8aaca99cadb85e", [], [], "hexpm"}}

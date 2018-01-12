@@ -52,7 +52,9 @@ defmodule MarathonEventExporter.Mixfile do
       # {:sse_test_server, path: "../sse_test_server"},
       {:sse_test_server,
        git: "https://github.com/praekeltfoundation/sse_test_server.git",
-       ref: "1109a521d70ed5246a0b7d50102518f61b6075e1"},
+       ref: "1109a521d70ed5246a0b7d50102518f61b6075e1",
+       # We need this installed, but we don't want to run its app.
+       app: false},
     ]
   end
 end
