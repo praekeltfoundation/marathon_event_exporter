@@ -48,6 +48,11 @@ defmodule MarathonEventExporter.Mixfile do
       {:excoveralls, "~> 0.7", only: :test},
       {:distillery, "~> 1.5", runtime: false},
       {:mix_docker, "~> 0.5.0", runtime: false},
+
+      # {:sse_test_server, path: "../sse_test_server"},
+      {:sse_test_server,
+       git: "https://github.com/praekeltfoundation/sse_test_server.git",
+       ref: "1109a521d70ed5246a0b7d50102518f61b6075e1"},
     ]
   end
 end

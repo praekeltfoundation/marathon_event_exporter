@@ -34,117 +34,58 @@ defmodule FakeMarathon do
   A fake Marathon API that can stream events.
   """
   use GenServer
-  require Logger
 
-  defmodule HandlerState do
-    defstruct stream_handler: nil, delay: nil
-  end
-
-  defmodule SSEHandler do
-    def init(req, state) do
-      # state.delay is nil (which is falsey) or an integer (which is truthy).
-      if state.delay, do: Process.sleep(state.delay)
-      new_req = :cowboy_req.stream_reply(
-        200, %{"content-type" => "text/event-stream"}, req)
-      FakeMarathon.sse_stream(state.stream_handler, self())
-      {:cowboy_loop, new_req, state}
-    end
-
-    def info(:keepalive, req, state) do
-      :cowboy_req.stream_body("\r\n", :nofin, req)
-      {:ok, req, state}
-    end
-
-    def info({:event, event, data}, req, state) do
-      ev = "event: #{event}\r\ndata: #{data}\r\n\r\n"
-      :cowboy_req.stream_body(ev, :nofin, req)
-      {:ok, req, state}
-    end
-
-    def info(:close, req, state) do
-      {:stop, req, state}
-    end
-
-    ## Client API
-
-    def keepalive(handler), do: send(handler, :keepalive)
-    def event(handler, {:event, _, _}=event), do: send(handler, event)
-    def close(handler), do: send(handler, :close)
-  end
-
-  defmodule State do
-    defstruct listener: nil, port: nil, sse_streams: []
-  end
+  alias SSETestServer.SSEServer
 
   ## Client
 
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts)
+  def start_link(args_and_opts) do
+    {opts, args} = Keyword.split(args_and_opts, [:name])
+    GenServer.start_link(__MODULE__, args, opts)
   end
-  def port(fm), do: GenServer.call(fm, :port)
-  def base_url(fm), do: "http://localhost:#{port(fm)}"
-  def event(fm, event, data), do: GenServer.call(fm, {:event, event, data})
-  def mk_event(handler, event_type, fields) do
+
+  def port(fm \\ :fake_marathon), do: GenServer.call(fm, :port)
+  def base_url(fm \\ :fake_marathon), do: "http://localhost:#{port(fm)}"
+  def events_url(fm \\ :fake_marathon), do: base_url(fm) <> "/v2/events"
+
+  def event(fm \\ :fake_marathon, event, data),
+    do: GenServer.call(fm, {:event, event, data})
+
+  def mk_event(fm \\ :fake_marathon, event_type, fields) do
     e = TestHelpers.marathon_event(event_type, fields)
-    event(handler, e.event, e.data)
+    event(fm, e.event, e.data)
   end
-  def keepalive(fm), do: GenServer.call(fm, :keepalive)
-  def end_stream(fm), do: GenServer.call(fm, :end_stream)
-  def sse_stream(fm, pid), do: GenServer.call(fm, {:sse_stream, pid})
+
+  def keepalive(fm \\ :fake_marathon), do: GenServer.call(fm, :keepalive)
+
+  def end_stream(fm \\ :fake_marathon), do: GenServer.call(fm, :end_stream)
 
   ## Callbacks
 
   def init(opts) do
-    # Trap exits so terminate/2 gets called reliably.
-    Process.flag(:trap_exit, true)
-    handler_state = %HandlerState{
-      stream_handler: self(),
-      delay: Keyword.get(opts, :response_delay),
-    }
-    handlers = [
-      {"/v2/events", SSEHandler, handler_state},
-    ]
-    dispatch = :cowboy_router.compile([{:_, handlers}])
-    listener_ref = make_ref()
-    {:ok, listener} = :cowboy.start_clear(
-      listener_ref, [], %{env: %{dispatch: dispatch}})
-    Process.link(listener)
-    {:ok, %State{listener: listener_ref, port: :ranch.get_port(listener_ref)}}
+    {:ok, sse_pid} = SSEServer.start_link(opts, name: nil)
+    SSEServer.add_endpoint(sse_pid, "/v2/events", opts)
+    {:ok, sse_pid}
   end
 
-  def terminate(reason, state) do
-    :cowboy.stop_listener(state.listener)
-    reason
-  end
+  def handle_call(:port, _from, sse_pid),
+    do: {:reply, SSEServer.port(sse_pid), sse_pid}
 
-  def handle_call(:port, _from, state), do: {:reply, state.port, state}
+  def handle_call({:event, event, data}, _from, sse_pid),
+    do: {:reply, SSEServer.event(sse_pid, "/v2/events", event, data), sse_pid}
 
-  def handle_call({:sse_stream, pid}, _from, state) do
-    new_state = %{state | sse_streams: [pid | state.sse_streams]}
-    {:reply, :ok, new_state}
-  end
+  def handle_call(:keepalive, _from, sse_pid),
+    do: {:reply, SSEServer.keepalive(sse_pid, "/v2/events"), sse_pid}
 
-  def handle_call({:event, _, _}=event, _from, state) do
-    Enum.each(state.sse_streams, &SSEHandler.event(&1, event))
-    {:reply, :ok, state}
-  end
-
-  def handle_call(:keepalive, _from, state) do
-    Enum.each(state.sse_streams, &SSEHandler.keepalive/1)
-    {:reply, :ok, state}
-  end
-
-  def handle_call(:end_stream, _from, state) do
-    Enum.each(state.sse_streams, &SSEHandler.close/1)
-    {:reply, :ok, state}
-  end
+  def handle_call(:end_stream, _from, sse_pid),
+    do: {:reply, SSEServer.end_stream(sse_pid, "/v2/events"), sse_pid}
 end
 
 # We don't start applications during tests because we don't want our own app
 # running, but we do need all its dependencies running.
 Application.load(:marathon_event_exporter)
 for app <- Application.spec(:marathon_event_exporter, :applications) do
-  Application.ensure_all_started(app)
+    if app not in [:sse_test_server], do: Application.ensure_all_started(app)
 end
 
 ExUnit.start()
